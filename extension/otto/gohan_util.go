@@ -181,15 +181,7 @@ func init() {
 func gohanHTTP(method, rawURL string, headers interface{}, postData interface{}, options interface{}) (int, http.Header, string, error) {
 	client := &http.Client{}
 	var reader io.Reader
-	if postData != nil {
-		log.Debug("post data %v", postData)
-		jsonByte, err := json.Marshal(postData)
-		if err != nil {
-			return 0, http.Header{}, "", err
-		}
-		log.Debug("request data: %s", string(jsonByte))
-		reader = bytes.NewBuffer(jsonByte)
-	}
+
 	request, err := http.NewRequest(method, rawURL, reader)
 	if headers != nil {
 		headerMap := headers.(map[string]interface{})
@@ -197,6 +189,25 @@ func gohanHTTP(method, rawURL string, headers interface{}, postData interface{},
 			request.Header.Add(key, value.(string))
 		}
 	}
+
+	if postData != nil {
+		log.Debug("post data %v", postData)
+
+		var requestData []byte = nil
+		contentType := request.Header.Get("content-type")
+		if contentType == "text/plain" {
+			fmt.Printf("postData: %v\n", postData)
+			requestData = []byte(postData.(string))
+		}else{
+			requestData, err = json.Marshal(postData)
+			if err != nil {
+				return 0, http.Header{}, "", err
+			}
+		}
+		log.Debug("request data: %s", string(requestData))
+		reader = bytes.NewBuffer(requestData)
+	}
+	
 	if err != nil {
 		return 0, http.Header{}, "", err
 	}
