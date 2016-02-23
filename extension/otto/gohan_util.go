@@ -181,25 +181,31 @@ func init() {
 func gohanHTTP(method, rawURL string, headers interface{}, postData interface{}, options interface{}) (int, http.Header, string, error) {
 	client := &http.Client{}
 	var reader io.Reader
-
-	request, err := http.NewRequest(method, rawURL, reader)
+	var headerMap map[string]interface{} = nil
 	if headers != nil {
-		headerMap := headers.(map[string]interface{})
-		for key, value := range headerMap {
-			request.Header.Add(key, value.(string))
-		}
+		headerMap = headers.(map[string]interface{})
 	}
+
 
 	fmt.Printf("postData: %v\n", postData)
 	if postData != nil {
 		log.Debug("post data %v", postData)
-
 		var requestData []byte = nil
-		contentType := request.Header.Get("content-type")
+		var err error
+
+		contentType := ""
+		if headerMap != nil {
+			if c, ok := headerMap["content-type"]; ok {
+				contentType = c.(string)
+			}
+		}
+
 		if contentType == "text/plain" {
 			fmt.Printf("text plain postData: %v\n", postData)
-			requestData = []byte(postData.(string))
-		}else{
+			if d, ok := postData.(string); ok {
+				requestData = []byte(d)
+			}
+		} else {
 			requestData, err = json.Marshal(postData)
 			if err != nil {
 				return 0, http.Header{}, "", err
@@ -207,8 +213,15 @@ func gohanHTTP(method, rawURL string, headers interface{}, postData interface{},
 		}
 		log.Debug("request data: %s", string(requestData))
 		reader = bytes.NewBuffer(requestData)
+
 	}
 
+	request, err := http.NewRequest(method, rawURL, reader)
+	if headerMap != nil {
+		for key, value := range headerMap {
+			request.Header.Add(key, value.(string))
+		}
+	}
 	if err != nil {
 		return 0, http.Header{}, "", err
 	}
